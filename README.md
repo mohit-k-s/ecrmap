@@ -108,7 +108,40 @@ payment-dev      dev-cluster       v2.0.9          payment-dev:12       ACTIVE  
 
 ---
 
-### 3. `ecrmap list` (Cluster & Service Inventory)
+### 3. `ecrmap pulls` / `ecrmap churn` (Detect High Pull Churn & Crash-Loops)
+
+Identify which services are driving excessive ECR image pull counts and rate limits:
+
+```bash
+# Analyze pull churn over the default 24h window
+ecrmap pulls payment-service
+
+# Or using churn alias over a 6-hour window
+ecrmap churn payment-service --window 6h
+```
+
+**Sample Output:**
+```
+ECR Pull Churn Analysis: payment-service
+Analyzed 3 active service(s) | Window: last 24h0m0s | Total Estimated Pulls: 852
+
+CULPRIT RANKING (SERVICES DRIVING HIGHEST PULL CHURN):
+RANK   SERVICE           CLUSTER         LAUNCH    RUNNING   STOPPED   EST. PULLS   RATE      HEALTH STATUS
+#1     payment-worker    prod-us-east-1  FARGATE   4         842       ~846         35.2/hr   🔴 CRASH-LOOPING
+#2     payment-api       prod-us-east-1  EC2       6         2         ~8           0.3/hr    🟢 HEALTHY
+#3     payment-stage     stage-us-east-1 FARGATE   1         1         ~2           0.1/hr    🟢 HEALTHY
+
+DIAGNOSTIC INSIGHTS & ROOT CAUSES:
+
+  ⚠️  Service 'payment-worker' in 'prod-us-east-1' (Estimated pulls: ~846, Stopped: 842):
+     • Dominant Stop Reason: Essential container in task exited
+     • 840 task(s) exited with code 137 (OOM / Out-Of-Memory killed). Increase container/task memory limits.
+     • Running on FARGATE: all 842 restarts required cold pulls without shared host layer cache.
+```
+
+---
+
+### 4. `ecrmap list` (Cluster & Service Inventory)
 
 List all active services and their deployed images:
 
@@ -125,7 +158,7 @@ ecrmap list --json
 
 ---
 
-### 4. `ecrmap cache`
+### 5. `ecrmap cache`
 
 ```bash
 # Show local cache directory

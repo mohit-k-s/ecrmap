@@ -93,6 +93,56 @@ func TestPrintAuditResults(t *testing.T) {
 	}
 }
 
+func TestPrintChurnReport(t *testing.T) {
+	rep := &model.RepoChurnReport{
+		Repository:          "payment-service",
+		Window:              24 * time.Hour,
+		AnalyzedServices:    2,
+		TotalEstimatedPulls: 154,
+		Services: []model.ServiceChurnStat{
+			{
+				ClusterName:     "prod-us-east-1",
+				ServiceName:     "payment-worker",
+				LaunchType:      "FARGATE",
+				DesiredCount:    2,
+				RunningCount:    2,
+				StoppedCount:    150,
+				EstimatedPulls:  152,
+				PullsPerHour:    6.33,
+				HealthStatus:    "CRASH-LOOPING",
+				PrimaryExitCode: 137,
+				PrimaryReason:   "Essential container in task exited",
+				Recommendations: []string{
+					"150 task(s) exited with code 137 (OOM / Out-Of-Memory killed).",
+					"Running on FARGATE: all 150 restarts required cold pulls without shared host layer cache.",
+				},
+			},
+			{
+				ClusterName:    "prod-us-east-1",
+				ServiceName:    "payment-api",
+				LaunchType:     "EC2",
+				DesiredCount:   2,
+				RunningCount:   2,
+				StoppedCount:   0,
+				EstimatedPulls: 2,
+				PullsPerHour:   0.08,
+				HealthStatus:   "HEALTHY",
+			},
+		},
+	}
+
+	out := captureStdout(func() {
+		err := PrintChurnReport(rep, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	if len(out) == 0 {
+		t.Errorf("expected non-empty output")
+	}
+}
+
 func TestPrintListResults(t *testing.T) {
 	deployments := []model.ServiceDeployment{
 		{
