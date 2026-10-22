@@ -33,8 +33,12 @@ They normally have to write throwaway scripts or manually click through dozens o
 ### From Source (Go 1.24+)
 
 ```bash
-cd /Users/mohit/experiments/ecrmap
-go build -o /usr/local/bin/ecrmap .
+git clone https://github.com/mohit-k-s/ecrmap.git
+cd ecrmap
+go build -o ecrmap .
+
+# Optionally move to your PATH
+sudo mv ecrmap /usr/local/bin/
 ```
 
 Verify the installation:
@@ -75,11 +79,15 @@ stage-us-east-1   payment-stage     ACTIVE   2/2     payment-stage:88     app   
 
 ---
 
-### 2. `ecrmap audit` (Repository Version Distribution)
+### 2. `ecrmap repo` / `ecrmap audit` (Repository Version Distribution)
 
-See every active tag running from a specific repository and which services are running them:
+See every active version running from a specific ECR repository and which services are running them:
 
 ```bash
+# Using repo alias
+ecrmap repo payment-service
+
+# Or audit
 ecrmap audit payment-service
 ```
 
@@ -92,10 +100,10 @@ Tag / Version Distribution:
   • v2.1.0               → prod-us-east-1/payment-service (1 service(s))
   • v2.0.9               → stage-us-east-1/payment-stage, dev-cluster/payment-dev (2 service(s))
 
-TAG        CLUSTER           SERVICE          TASK DEF             COUNT   FULL IMAGE
-v2.1.0     prod-us-east-1    payment-service  payment-service:142  6/6     123456789012.dkr.ecr.us-east-1.amazonaws.com/payment-service:v2.1.0
-v2.0.9     stage-us-east-1   payment-stage    payment-stage:88     2/2     123456789012.dkr.ecr.us-east-1.amazonaws.com/payment-service:v2.0.9
-v2.0.9     dev-cluster       payment-dev      payment-dev:12       1/1     123456789012.dkr.ecr.us-east-1.amazonaws.com/payment-service:v2.0.9
+SERVICE          CLUSTER           IMAGE VERSION   TASK DEF             STATUS   COUNT
+payment-service  prod-us-east-1    v2.1.0          payment-service:142  ACTIVE   6/6
+payment-stage    stage-us-east-1   v2.0.9          payment-stage:88     ACTIVE   2/2
+payment-dev      dev-cluster       v2.0.9          payment-dev:12       ACTIVE   1/1
 ```
 
 ---
