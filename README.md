@@ -141,7 +141,51 @@ DIAGNOSTIC INSIGHTS & ROOT CAUSES:
 
 ---
 
-### 4. `ecrmap list` (Cluster & Service Inventory)
+### 4. `ecrmap reap` & `ecrmap restore` (Cost-Saving Auto-Scale Down)
+
+In dev and staging environments, broken commits often cause services to silently crash-loop for days, burning Fargate compute and NAT bandwidth while nobody is watching.
+
+`ecrmap reap` scans your dev clusters, identifies runaway crash-looping services, and safely scales them to `desiredCount = 0`:
+
+```bash
+# 1. Preview candidates in safe DRY-RUN mode (never changes AWS without --execute)
+ecrmap reap --cluster dev-useast1
+
+# 2. Actually scale down crash-looping services in dev
+ecrmap reap --cluster dev-useast1 --execute
+
+# 3. Custom restart threshold & time window (e.g. >= 20 restarts over last 12h)
+ecrmap reap --cluster dev-useast1 --threshold 20 --window 12h --execute
+```
+
+**Sample Output:**
+```
+ECS Service Reaper | Cluster: dev-useast1 (Region: us-east-1)
+Window: last 24h0m0s | Threshold: >= 15 restarts | Mode: ⚡ EXECUTED (Services scaled to 0)
+
+CANDIDATE SERVICES FOR SCALE-DOWN (CRASH-LOOPING):
+SERVICE          LAUNCH    DESIRED   STOPPED   PRIMARY CAUSE                                       ACTION
+search-worker    FARGATE   2         842       Crash-looping: 842 restarts in 24h (exit code 137)  SCALED TO 0
+billing-mock     FARGATE   1         312       Crash-looping: 312 restarts in 24h (exit code 1)    SCALED TO 0
+
+✅ Successfully scaled down 2 service(s) (saved 3 tasks).
+   Original counts are tagged on each service. Run ecrmap restore <service> --cluster dev-useast1 to restore anytime.
+```
+
+#### Safe Restoration anytime:
+```bash
+# Reads 'ecrmap:original-desired-count' tag and restores exact previous replicas:
+ecrmap restore search-worker --cluster dev-useast1
+```
+
+#### Safety Guardrails:
+* **Dry-Run by default:** Won't touch AWS unless you explicitly add `--execute`.
+* **Production Lockout:** Refuses to run against clusters containing `prod` or `production` unless `--allow-prod` is explicitly supplied.
+* **Audit Trail:** Tags every scaled service with `ecrmap:original-desired-count`, `ecrmap:reap-reason`, and `ecrmap:reaped-at`.
+
+---
+
+### 5. `ecrmap list` (Cluster & Service Inventory)
 
 List all active services and their deployed images:
 
@@ -158,7 +202,7 @@ ecrmap list --json
 
 ---
 
-### 5. `ecrmap cache`
+### 6. `ecrmap cache`
 
 ```bash
 # Show local cache directory

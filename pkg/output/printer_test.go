@@ -203,3 +203,50 @@ func TestSnapshotSerialization(t *testing.T) {
 		t.Errorf("expected json output")
 	}
 }
+
+func TestPrintReapReport(t *testing.T) {
+	rep := &model.ReapReport{
+		ClusterName: "dev-cluster",
+		Region:      "us-east-1",
+		TimeWindow:  24 * time.Hour,
+		Threshold:   15,
+		DryRun:      true,
+		Candidates: []model.ReapCandidate{
+			{
+				ServiceName:     "broken-worker",
+				LaunchType:      "FARGATE",
+				CurrentDesired:  2,
+				StoppedCount:    84,
+				PrimaryExitCode: 137,
+				ShouldReap:      true,
+				ReapReason:      "Crash-looping: 84 restarts in 24h (exit code 137)",
+			},
+		},
+		ReapedCount: 0,
+		SavedTasks:  2,
+	}
+
+	out := captureStdout(func() {
+		err := PrintReapReport(rep, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	if len(out) == 0 {
+		t.Errorf("expected non-empty output")
+	}
+}
+
+func TestPrintRestoreResult(t *testing.T) {
+	out := captureStdout(func() {
+		err := PrintRestoreResult("broken-worker", "dev-cluster", 2, false)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	if len(out) == 0 {
+		t.Errorf("expected non-empty output")
+	}
+}
