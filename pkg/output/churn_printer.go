@@ -27,7 +27,7 @@ func PrintChurnReport(report *model.RepoChurnReport, jsonFormat bool) error {
 	fmt.Printf("%sCULPRIT RANKING (SERVICES DRIVING HIGHEST PULL CHURN):%s\n", colorBold, colorReset)
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 3, ' ', 0)
-	fmt.Fprintf(w, "%sRANK\tSERVICE\tCLUSTER\tLAUNCH\tRUNNING\tSTOPPED\tEST. PULLS\tRATE\tHEALTH STATUS%s\n", colorBold, colorReset)
+	fmt.Fprintf(w, "%sRANK\tSERVICE\tREGION\tCLUSTER\tLAUNCH\tRUNNING\tSTOPPED\tEST. PULLS\tRATE\tHEALTH STATUS%s\n", colorBold, colorReset)
 
 	for i, s := range report.Services {
 		statusColor := colorGreen
@@ -43,9 +43,10 @@ func PrintChurnReport(report *model.RepoChurnReport, jsonFormat bool) error {
 
 		rateStr := fmt.Sprintf("%.1f/hr", s.PullsPerHour)
 
-		fmt.Fprintf(w, "#%d\t%s\t%s\t%s\t%d\t%d\t~%d\t%s\t%s %s%s%s\n",
+		fmt.Fprintf(w, "#%d\t%s\t%s\t%s\t%s\t%d\t%d\t~%d\t%s\t%s %s%s%s\n",
 			i+1,
 			s.ServiceName,
+			s.Region,
 			s.ClusterName,
 			s.LaunchType,
 			s.RunningCount,

@@ -18,8 +18,9 @@ import (
 
 // Crawler crawls ECS clusters to discover active services and their deployed images.
 type Crawler struct {
-	client *ecs.Client
-	region string
+	client  *ecs.Client
+	region  string
+	baseCfg aws.Config
 }
 
 // NewCrawler creates an ECS Crawler.
@@ -27,6 +28,19 @@ func NewCrawler(client *ecs.Client, region string) *Crawler {
 	return &Crawler{
 		client: client,
 		region: region,
+	}
+}
+
+// NewCrawlerWithConfig creates an ECS Crawler with base AWS configuration for multi-region support.
+func NewCrawlerWithConfig(cfg aws.Config, region string) *Crawler {
+	regionalCfg := cfg.Copy()
+	if region != "" {
+		regionalCfg.Region = region
+	}
+	return &Crawler{
+		client:  ecs.NewFromConfig(regionalCfg),
+		region:  regionalCfg.Region,
+		baseCfg: cfg,
 	}
 }
 
@@ -52,7 +66,7 @@ func (c *Crawler) Discover(ctx context.Context, opts DiscoverOptions) (*model.Sn
 		return &model.Snapshot{
 			Version:     "1.0",
 			CreatedAt:   time.Now(),
-			Region:      c.region,
+			Regions:     []string{c.region},
 			Deployments: []model.ServiceDeployment{},
 		}, nil
 	}
@@ -149,6 +163,7 @@ func (c *Crawler) Discover(ctx context.Context, opts DiscoverOptions) (*model.Sn
 		}
 
 		deployments = append(deployments, model.ServiceDeployment{
+			Region:            c.region,
 			ClusterName:       item.clusterName,
 			ClusterArn:        item.clusterArn,
 			ServiceName:       aws.ToString(svc.ServiceName),
@@ -166,8 +181,66 @@ func (c *Crawler) Discover(ctx context.Context, opts DiscoverOptions) (*model.Sn
 	return &model.Snapshot{
 		Version:     "1.0",
 		CreatedAt:   time.Now(),
-		Region:      c.region,
+		Regions:     []string{c.region},
 		Deployments: deployments,
+	}, nil
+}
+
+// DiscoverMultiRegion crawls multiple AWS regions concurrently.
+func DiscoverMultiRegion(ctx context.Context, baseCfg aws.Config, regions []string, opts DiscoverOptions) (*model.Snapshot, error) {
+	if len(regions) == 0 {
+		regions = []string{baseCfg.Region}
+	}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var allDeployments []model.ServiceDeployment
+	var firstErr error
+
+	for _, region := range regions {
+		r := strings.TrimSpace(region)
+		if r == "" {
+			continue
+		}
+
+		wg.Add(1)
+		go func(targetRegion string) {
+			defer wg.Done()
+
+			regionalCfg := baseCfg.Copy()
+			regionalCfg.Region = targetRegion
+
+			client := ecs.NewFromConfig(regionalCfg)
+			crawler := NewCrawler(client, targetRegion)
+
+			snap, err := crawler.Discover(ctx, opts)
+			if err != nil {
+				mu.Lock()
+				if firstErr == nil {
+					firstErr = fmt.Errorf("region %s: %w", targetRegion, err)
+				}
+				mu.Unlock()
+				return
+			}
+
+			mu.Lock()
+			allDeployments = append(allDeployments, snap.Deployments...)
+			mu.Unlock()
+		}(r)
+	}
+
+	wg.Wait()
+
+	// If all regions failed and we got zero deployments, return error
+	if len(allDeployments) == 0 && firstErr != nil {
+		return nil, firstErr
+	}
+
+	return &model.Snapshot{
+		Version:     "1.0",
+		CreatedAt:   time.Now(),
+		Regions:     regions,
+		Deployments: allDeployments,
 	}, nil
 }
 

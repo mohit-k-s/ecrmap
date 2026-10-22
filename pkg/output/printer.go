@@ -36,6 +36,7 @@ type WhereResult struct {
 
 // MatchedDeploymentEntry holds details of an image match in an ECS service.
 type MatchedDeploymentEntry struct {
+	Region         string `json:"region"`
 	Cluster        string `json:"cluster"`
 	Service        string `json:"service"`
 	Status         string `json:"status"`
@@ -65,7 +66,7 @@ func PrintWhereResults(results WhereResult, jsonFormat bool) error {
 		colorBold, len(results.Deployments), colorCyan, results.Query, colorReset)
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 3, ' ', 0)
-	fmt.Fprintf(w, "%sCLUSTER\tSERVICE\tSTATUS\tCOUNT\tTASK DEF\tCONTAINER\tIMAGE REF%s\n", colorBold, colorReset)
+	fmt.Fprintf(w, "%sREGION\tCLUSTER\tSERVICE\tSTATUS\tCOUNT\tTASK DEF\tCONTAINER\tIMAGE REF%s\n", colorBold, colorReset)
 
 	for _, d := range results.Deployments {
 		countStr := fmt.Sprintf("%d/%d", d.RunningCount, d.DesiredCount)
@@ -86,7 +87,8 @@ func PrintWhereResults(results WhereResult, jsonFormat bool) error {
 			statusColor = colorYellow
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s%s%s\t%s\t%s\t%s\t%s%s%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s%s%s\t%s\t%s\t%s\t%s%s%s\n",
+			d.Region,
 			d.Cluster,
 			d.Service,
 			statusColor, d.Status, colorReset,
@@ -113,13 +115,14 @@ func PrintListResults(deployments []model.ServiceDeployment, jsonFormat bool) er
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 3, ' ', 0)
-	fmt.Fprintf(w, "%sCLUSTER\tSERVICE\tDESIRED/RUNNING\tTASK DEFINITION\tCONTAINER\tIMAGE%s\n", colorBold, colorReset)
+	fmt.Fprintf(w, "%sREGION\tCLUSTER\tSERVICE\tDESIRED/RUNNING\tTASK DEFINITION\tCONTAINER\tIMAGE%s\n", colorBold, colorReset)
 
 	for _, d := range deployments {
 		counts := fmt.Sprintf("%d/%d", d.DesiredCount, d.RunningCount)
 		taskDefShort := d.TaskFamily + ":" + d.TaskRevision
 
 		for i, c := range d.Containers {
+			regionCol := d.Region
 			clusterCol := d.ClusterName
 			svcCol := d.ServiceName
 			countCol := counts
@@ -127,6 +130,7 @@ func PrintListResults(deployments []model.ServiceDeployment, jsonFormat bool) er
 
 			// For secondary containers, keep parent columns clean
 			if i > 0 {
+				regionCol = ""
 				clusterCol = ""
 				svcCol = ""
 				countCol = ""
@@ -139,8 +143,8 @@ func PrintListResults(deployments []model.ServiceDeployment, jsonFormat bool) er
 			}
 			repoDisplay := c.Image.Repository + ":" + tagOrDigest
 
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-				clusterCol, svcCol, countCol, tdCol, c.ContainerName, repoDisplay)
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+				regionCol, clusterCol, svcCol, countCol, tdCol, c.ContainerName, repoDisplay)
 		}
 	}
 	w.Flush()
@@ -178,9 +182,9 @@ func PrintAuditResults(res AuditResult, jsonFormat bool) error {
 	}
 	fmt.Println()
 
-	// Detailed table: SERVICE, CLUSTER, IMAGE VERSION, TASK DEF, STATUS, COUNT
+	// Detailed table: SERVICE, REGION, CLUSTER, IMAGE VERSION, TASK DEF, STATUS, COUNT
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 3, ' ', 0)
-	fmt.Fprintf(w, "%sSERVICE\tCLUSTER\tIMAGE VERSION\tTASK DEF\tSTATUS\tCOUNT%s\n", colorBold, colorReset)
+	fmt.Fprintf(w, "%sSERVICE\tREGION\tCLUSTER\tIMAGE VERSION\tTASK DEF\tSTATUS\tCOUNT%s\n", colorBold, colorReset)
 
 	for _, d := range res.AllDeployments {
 		versionStr := d.Tag
@@ -199,8 +203,9 @@ func PrintAuditResults(res AuditResult, jsonFormat bool) error {
 
 		counts := fmt.Sprintf("%d/%d", d.RunningCount, d.DesiredCount)
 
-		fmt.Fprintf(w, "%s\t%s\t%s%s%s\t%s\t%s%s%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s%s%s\t%s\t%s%s%s\t%s\n",
 			d.Service,
+			d.Region,
 			d.Cluster,
 			colorCyan, versionStr, colorReset,
 			d.TaskDefinition,

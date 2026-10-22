@@ -170,12 +170,39 @@ ecrmap cache clean
 
 ---
 
+## Multi-Region Support 🌍
+
+Many organizations keep a single central ECR repository (e.g. in `us-east-1`) while ECS workloads run across multiple AWS regions.
+
+`ecrmap` queries multiple regions in parallel using goroutines, meaning a 5-region scan takes roughly the same ~3–5 seconds as a single-region scan:
+
+```bash
+# Query multiple specific regions (comma-separated)
+ecrmap repo payment-service -r us-east-1,us-west-2,eu-west-1
+
+# Or query ALL enabled regions in your AWS account in parallel
+ecrmap where payment-api:v2.1.0 --all-regions
+```
+
+**Output across regions:**
+```
+Found 3 active container instance(s) matching payment-api:v2.1.0:
+
+REGION       CLUSTER           SERVICE           STATUS   COUNT   TASK DEF             CONTAINER   IMAGE REF
+us-east-1    prod-us-east-1    payment-service   ACTIVE   6/6     payment-service:142  app         v2.1.0
+us-west-2    prod-us-west-2    payment-service   ACTIVE   4/4     payment-service:142  app         v2.1.0
+eu-west-1    prod-eu-west-1    payment-eu        ACTIVE   2/2     payment-eu:65        app         v2.1.0
+```
+
+---
+
 ## Global Flags
 
 | Flag | Description | Default |
 | :--- | :--- | :--- |
 | `-p, --profile <name>` | AWS profile to use | Default credentials / SSO |
-| `-r, --region <region>` | AWS region override | From AWS config / env |
+| `-r, --region <region(s)>` | AWS region(s) (comma-separated, e.g. `us-east-1,us-west-2`) | From AWS config / env |
+| `--all-regions` | Discover and query all enabled AWS regions in parallel | `false` |
 | `-c, --cluster <name>` | Filter discovery to a single cluster | All clusters |
 | `--fresh` | Bypass local cache and force live AWS discovery | `false` |
 | `--cache-ttl <duration>` | Time to keep cached discoveries | `5m0s` |

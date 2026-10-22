@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	awsecs "github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/spf13/cobra"
 
 	"ecrmap/pkg/ecs"
@@ -66,8 +65,7 @@ and rapid restart churn across your ECS clusters.`,
 			}
 		}
 
-		client := awsecs.NewFromConfig(cfg)
-		crawler := ecs.NewCrawler(client, effectiveRegion)
+		crawler := ecs.NewCrawlerWithConfig(cfg, effectiveRegion)
 
 		// 3. Run churn analysis
 		report, err := crawler.AnalyzeRepoChurn(ctx, snapshot, repoName, flagWindow)

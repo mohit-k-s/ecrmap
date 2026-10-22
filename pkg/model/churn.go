@@ -4,6 +4,7 @@ import "time"
 
 // ServiceChurnStat contains churn and pull metrics for an ECS service.
 type ServiceChurnStat struct {
+	Region              string         `json:"region"`
 	ClusterName         string         `json:"cluster_name"`
 	ServiceName         string         `json:"service_name"`
 	LaunchType          string         `json:"launch_type"`

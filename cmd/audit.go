@@ -59,6 +59,7 @@ var auditCmd = &cobra.Command{
 
 					taskDefShort := dep.TaskFamily + ":" + dep.TaskRevision
 					matches = append(matches, output.MatchedDeploymentEntry{
+						Region:         dep.Region,
 						Cluster:        dep.ClusterName,
 						Service:        dep.ServiceName,
 						Status:         dep.Status,

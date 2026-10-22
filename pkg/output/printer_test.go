@@ -29,6 +29,7 @@ func TestPrintWhereResults(t *testing.T) {
 		Query: "payment-api:v2.1.0",
 		Deployments: []MatchedDeploymentEntry{
 			{
+				Region:         "us-east-1",
 				Cluster:        "prod-us-east-1",
 				Service:        "payment-service",
 				Status:         "ACTIVE",
@@ -66,6 +67,7 @@ func TestPrintAuditResults(t *testing.T) {
 		},
 		AllDeployments: []MatchedDeploymentEntry{
 			{
+				Region:         "us-east-1",
 				Cluster:        "prod-us-east-1",
 				Service:        "payment-service",
 				Status:         "ACTIVE",
@@ -101,6 +103,7 @@ func TestPrintChurnReport(t *testing.T) {
 		TotalEstimatedPulls: 154,
 		Services: []model.ServiceChurnStat{
 			{
+				Region:          "us-east-1",
 				ClusterName:     "prod-us-east-1",
 				ServiceName:     "payment-worker",
 				LaunchType:      "FARGATE",
@@ -118,7 +121,8 @@ func TestPrintChurnReport(t *testing.T) {
 				},
 			},
 			{
-				ClusterName:    "prod-us-east-1",
+				Region:         "us-west-2",
+				ClusterName:    "prod-us-west-2",
 				ServiceName:    "payment-api",
 				LaunchType:     "EC2",
 				DesiredCount:   2,
@@ -184,7 +188,7 @@ func TestSnapshotSerialization(t *testing.T) {
 	s := model.Snapshot{
 		Version:   "1.0",
 		CreatedAt: time.Now(),
-		Region:    "us-east-1",
+		Regions:   []string{"us-east-1"},
 		Deployments: []model.ServiceDeployment{
 			{
 				ClusterName: "cluster-1",

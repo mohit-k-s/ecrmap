@@ -23,6 +23,7 @@ type ContainerDeployment struct {
 
 // ServiceDeployment represents an active ECS service and its deployed task definition.
 type ServiceDeployment struct {
+	Region             string                `json:"region"`
 	ClusterName        string                `json:"cluster_name"`
 	ClusterArn         string                `json:"cluster_arn"`
 	ServiceName        string                `json:"service_name"`
@@ -36,10 +37,10 @@ type ServiceDeployment struct {
 	Containers         []ContainerDeployment `json:"containers"`
 }
 
-// Snapshot is the cached state of all active ECS service deployments in a region.
+// Snapshot is the cached state of all active ECS service deployments.
 type Snapshot struct {
 	Version     string              `json:"version"`
 	CreatedAt   time.Time           `json:"created_at"`
-	Region      string              `json:"region"`
+	Regions     []string            `json:"regions"`
 	Deployments []ServiceDeployment `json:"deployments"`
 }

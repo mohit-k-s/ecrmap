@@ -71,7 +71,14 @@ func (c *Crawler) AnalyzeRepoChurn(ctx context.Context, snapshot *model.Snapshot
 		go func(k svcKey, d model.ServiceDeployment) {
 			defer wg.Done()
 
-			stat := c.inspectServiceChurn(ctx, k.clusterArn, k.clusterName, k.serviceName, d, since, window)
+			client := c.client
+			if d.Region != "" && d.Region != c.region {
+				rcfg := c.baseCfg.Copy()
+				rcfg.Region = d.Region
+				client = ecs.NewFromConfig(rcfg)
+			}
+
+			stat := c.inspectServiceChurn(ctx, client, k.clusterArn, k.clusterName, k.serviceName, d, since, window)
 
 			mu.Lock()
 			churnStats = append(churnStats, stat)
@@ -100,8 +107,9 @@ func (c *Crawler) AnalyzeRepoChurn(ctx context.Context, snapshot *model.Snapshot
 	}, nil
 }
 
-func (c *Crawler) inspectServiceChurn(ctx context.Context, clusterArn, clusterName, serviceName string, dep model.ServiceDeployment, since time.Time, window time.Duration) model.ServiceChurnStat {
+func (c *Crawler) inspectServiceChurn(ctx context.Context, client *ecs.Client, clusterArn, clusterName, serviceName string, dep model.ServiceDeployment, since time.Time, window time.Duration) model.ServiceChurnStat {
 	stat := model.ServiceChurnStat{
+		Region:         dep.Region,
 		ClusterName:    clusterName,
 		ServiceName:    serviceName,
 		LaunchType:     "EC2", // Default unless found otherwise
@@ -110,8 +118,12 @@ func (c *Crawler) inspectServiceChurn(ctx context.Context, clusterArn, clusterNa
 		ExitCodeCounts: make(map[int32]int),
 	}
 
+	if client == nil {
+		client = c.client
+	}
+
 	// Fetch stopped tasks for this service
-	listResp, err := c.client.ListTasks(ctx, &ecs.ListTasksInput{
+	listResp, err := client.ListTasks(ctx, &ecs.ListTasksInput{
 		Cluster:       aws.String(clusterArn),
 		ServiceName:   aws.String(serviceName),
 		DesiredStatus: ecstypes.DesiredStatusStopped,
@@ -125,7 +137,7 @@ func (c *Crawler) inspectServiceChurn(ctx context.Context, clusterArn, clusterNa
 	}
 
 	// Describe the stopped tasks
-	descResp, err := c.client.DescribeTasks(ctx, &ecs.DescribeTasksInput{
+	descResp, err := client.DescribeTasks(ctx, &ecs.DescribeTasksInput{
 		Cluster: aws.String(clusterArn),
 		Tasks:   listResp.TaskArns,
 	})
